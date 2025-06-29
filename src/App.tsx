@@ -10,13 +10,19 @@ import { NotificationDropdown } from './components/NotificationDropdown';
 import { SettingsModal } from './components/SettingsModal';
 import { HelpModal } from './components/HelpModal';
 import { LogoutModal } from './components/LogoutModal';
+import { RecipeCarousel } from './components/RecipeCarousel';
+import { RecipeModal } from './components/RecipeModal';
+import { DatabaseStatus } from './components/DatabaseStatus';
 import { featuredMovie, contentRows, movies, getMostLikedMovies } from './data/movies';
 import { useLocalStorage } from './hooks/useLocalStorage';
+import { useRecipes } from './hooks/useRecipes';
 import { Movie } from './types';
+import { RecipeWithCuisine } from './types/database';
 
 function App() {
   const [currentMovie, setCurrentMovie] = useState<Movie | null>(null);
   const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null);
+  const [selectedRecipe, setSelectedRecipe] = useState<RecipeWithCuisine | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<Movie[]>([]);
   const [isScrolled, setIsScrolled] = useState(false);
@@ -29,6 +35,9 @@ function App() {
   const [searchSuggestions, setSearchSuggestions] = useState<Movie[]>([]);
   const [movieLikes, setMovieLikes] = useLocalStorage<Record<string, number>>('project-likes', {});
   const [userLikes, setUserLikes] = useLocalStorage<string[]>('project-user-likes', []);
+
+  // Database integration
+  const { cuisineCarousels, loading, error, connected, refetch } = useRecipes();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -69,6 +78,10 @@ function App() {
 
   const handleMovieSelect = (movie: Movie) => {
     setSelectedMovie(movie);
+  };
+
+  const handleRecipeSelect = (recipe: RecipeWithCuisine) => {
+    setSelectedRecipe(recipe);
   };
 
   const handlePlay = (movie: Movie) => {
@@ -260,10 +273,36 @@ function App() {
           />
 
           <div className="relative -mt-16 z-10">
+            {/* Database Status */}
+            <DatabaseStatus
+              connected={connected}
+              loading={loading}
+              error={error}
+              onRetry={refetch}
+            />
+
+            {/* Recipe Carousels from Database */}
+            {connected && cuisineCarousels.length > 0 && (
+              <div className="mb-8">
+                <h2 className="text-white text-2xl md:text-3xl font-bold mb-6 px-4 md:px-8">
+                  Recipes by Cuisine
+                </h2>
+                {cuisineCarousels.map((carousel) => (
+                  <RecipeCarousel
+                    key={carousel.id}
+                    title={carousel.name}
+                    recipes={carousel.recipes}
+                    onRecipeClick={handleRecipeSelect}
+                  />
+                ))}
+              </div>
+            )}
+
+            {/* Original Content Rows */}
             {finalContentRows.map((row) => (
               <div
                 key={row.id}
-               data-content-row
+                data-content-row
                 id={row.id === 'mylist' ? 'mylist-section' : undefined}
                 data-section={row.id === 'most-liked' ? 'most-popular' : undefined}
                 className={row.id === 'mylist' ? 'pt-8' : ''}
@@ -300,6 +339,13 @@ function App() {
           currentLikes={movieLikes[selectedMovie.id] || selectedMovie.likes || 0}
           isLiked={userLikes.includes(selectedMovie.id)}
           myList={myList}
+        />
+      )}
+
+      {selectedRecipe && (
+        <RecipeModal
+          recipe={selectedRecipe}
+          onClose={() => setSelectedRecipe(null)}
         />
       )}
     </div>
