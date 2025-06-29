@@ -13,9 +13,11 @@ import { LogoutModal } from './components/LogoutModal';
 import { RecipeCarousel } from './components/RecipeCarousel';
 import { RecipeModal } from './components/RecipeModal';
 import { DatabaseStatus } from './components/DatabaseStatus';
+import { StateManager } from './components/StateManager';
 import { featuredMovie, contentRows, movies, getMostLikedMovies } from './data/movies';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import { useRecipes } from './hooks/useRecipes';
+import { useProjectState } from './hooks/useProjectState';
 import { Movie } from './types';
 import { RecipeWithCuisine } from './types/database';
 
@@ -31,13 +33,56 @@ function App() {
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
-  const [myList, setMyList] = useLocalStorage<string[]>('project-mylist', []);
+  const [showStateManager, setShowStateManager] = useState(false);
   const [searchSuggestions, setSearchSuggestions] = useState<Movie[]>([]);
+
+  // Legacy local storage hooks (for backward compatibility)
+  const [myList, setMyList] = useLocalStorage<string[]>('project-mylist', []);
   const [movieLikes, setMovieLikes] = useLocalStorage<Record<string, number>>('project-likes', {});
   const [userLikes, setUserLikes] = useLocalStorage<string[]>('project-user-likes', []);
 
+  // New state persistence system
+  const {
+    state: projectState,
+    loading: stateLoading,
+    updateMyList,
+    updateMovieLikes,
+    updateUserLikes,
+    updateLastSelectedMovie,
+    updateLastSelectedRecipe,
+    updateSearchQuery,
+    addToViewingHistory
+  } = useProjectState();
+
   // Database integration
   const { cuisineCarousels, loading, error, connected, refetch } = useRecipes();
+
+  // Initialize state from persistence system
+  useEffect(() => {
+    if (projectState && !stateLoading) {
+      // Sync legacy state with new persistence system
+      if (projectState.userPreferences.myList.length > 0) {
+        setMyList(projectState.userPreferences.myList);
+      }
+      if (Object.keys(projectState.userPreferences.movieLikes).length > 0) {
+        setMovieLikes(projectState.userPreferences.movieLikes);
+      }
+      if (projectState.userPreferences.userLikes.length > 0) {
+        setUserLikes(projectState.userPreferences.userLikes);
+      }
+      
+      // Restore UI state
+      if (projectState.uiState.lastSearchQuery) {
+        setSearchQuery(projectState.uiState.lastSearchQuery);
+      }
+      if (projectState.uiState.lastSelectedMovie) {
+        setSelectedMovie(projectState.uiState.lastSelectedMovie);
+      }
+      if (projectState.uiState.lastSelectedRecipe) {
+        setSelectedRecipe(projectState.uiState.lastSelectedRecipe);
+      }
+    }
+  }, [projectState, stateLoading, setMyList, setMovieLikes, setUserLikes]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -50,6 +95,8 @@ function App() {
 
   const handleSearch = (query: string) => {
     setSearchQuery(query);
+    updateSearchQuery(query);
+    
     if (query.trim()) {
       // Get all movies from regular movies array and content rows
       const allMovies = [...movies];
@@ -78,26 +125,32 @@ function App() {
 
   const handleMovieSelect = (movie: Movie) => {
     setSelectedMovie(movie);
+    updateLastSelectedMovie(movie);
   };
 
   const handleRecipeSelect = (recipe: RecipeWithCuisine) => {
     setSelectedRecipe(recipe);
+    updateLastSelectedRecipe(recipe);
   };
 
   const handlePlay = (movie: Movie) => {
     setCurrentMovie(movie);
+    addToViewingHistory(movie.id);
   };
 
   const handleAddToList = (movie: Movie) => {
-    setMyList(prev => 
-      prev.includes(movie.id) 
-        ? prev.filter(id => id !== movie.id)
-        : [...prev, movie.id]
-    );
+    const isInList = myList.includes(movie.id);
+    const newList = isInList 
+      ? myList.filter(id => id !== movie.id)
+      : [...myList, movie.id];
+    
+    setMyList(newList);
+    updateMyList(movie.id, isInList ? 'remove' : 'add');
   };
 
   const handleMoreInfo = (movie: Movie) => {
     setSelectedMovie(movie);
+    updateLastSelectedMovie(movie);
   };
 
   const handleSignOut = () => {
@@ -127,20 +180,27 @@ function App() {
   };
 
   const handleLike = (movie: Movie) => {
-    if (userLikes.includes(movie.id)) {
+    const isLiked = userLikes.includes(movie.id);
+    const currentLikes = movieLikes[movie.id] || movie.likes || 0;
+    
+    if (isLiked) {
       // Remove like
-      setUserLikes(prev => prev.filter(id => id !== movie.id));
-      setMovieLikes(prev => ({
-        ...prev,
-        [movie.id]: Math.max(0, (prev[movie.id] || movie.likes || 0) - 1)
-      }));
+      const newUserLikes = userLikes.filter(id => id !== movie.id);
+      const newLikes = Math.max(0, currentLikes - 1);
+      
+      setUserLikes(newUserLikes);
+      setMovieLikes(prev => ({ ...prev, [movie.id]: newLikes }));
+      updateUserLikes(movie.id, false);
+      updateMovieLikes(movie.id, newLikes);
     } else {
       // Add like
-      setUserLikes(prev => [...prev, movie.id]);
-      setMovieLikes(prev => ({
-        ...prev,
-        [movie.id]: (prev[movie.id] || movie.likes || 0) + 1
-      }));
+      const newUserLikes = [...userLikes, movie.id];
+      const newLikes = currentLikes + 1;
+      
+      setUserLikes(newUserLikes);
+      setMovieLikes(prev => ({ ...prev, [movie.id]: newLikes }));
+      updateUserLikes(movie.id, true);
+      updateMovieLikes(movie.id, newLikes);
     }
   };
 
@@ -230,6 +290,7 @@ function App() {
         onSignOut={handleSignOut}
         onSettings={() => setShowSettingsModal(true)}
         onHelp={() => setShowHelpModal(true)}
+        onStateManager={() => setShowStateManager(true)}
       />
 
       <NotificationDropdown
@@ -251,6 +312,11 @@ function App() {
         isOpen={showLogoutModal}
         onClose={() => setShowLogoutModal(false)}
         onConfirmLogout={handleConfirmLogout}
+      />
+
+      <StateManager
+        isOpen={showStateManager}
+        onClose={() => setShowStateManager(false)}
       />
 
       {searchQuery ? (
@@ -347,6 +413,16 @@ function App() {
           recipe={selectedRecipe}
           onClose={() => setSelectedRecipe(null)}
         />
+      )}
+
+      {/* State Loading Indicator */}
+      {stateLoading && (
+        <div className="fixed bottom-4 right-4 z-50">
+          <div className="flex items-center space-x-2 px-4 py-2 rounded-lg text-white" style={{ backgroundColor: 'rgba(8, 25, 50, 0.9)' }}>
+            <div className="animate-spin rounded-full h-4 w-4 border-2 border-yellow-500 border-t-transparent"></div>
+            <span className="text-sm">Loading state...</span>
+          </div>
+        </div>
       )}
     </div>
   );
