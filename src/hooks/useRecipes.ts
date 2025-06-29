@@ -17,6 +17,11 @@ export const useRecipes = () => {
       setLoading(true);
       setError(null);
 
+      // Check if Supabase is configured
+      if (!supabase) {
+        throw new Error('Supabase not configured. Please connect to Supabase first.');
+      }
+
       // Test connection first
       const { data: testData, error: testError } = await supabase
         .from('recipes')

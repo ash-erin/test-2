@@ -9,12 +9,23 @@ interface RecipeModalProps {
 
 export const RecipeModal: React.FC<RecipeModalProps> = ({ recipe, onClose }) => {
   const getRecipeImageUrl = (recipeTitle: string) => {
-    const sanitizedTitle = recipeTitle.toLowerCase()
-      .replace(/[^a-z0-9]/g, '-')
-      .replace(/-+/g, '-')
-      .replace(/^-|-$/g, '');
+    // Use a food-related placeholder image from Pexels
+    const foodImages = [
+      'https://images.pexels.com/photos/1640777/pexels-photo-1640777.jpeg?auto=compress&cs=tinysrgb&w=800',
+      'https://images.pexels.com/photos/376464/pexels-photo-376464.jpeg?auto=compress&cs=tinysrgb&w=800',
+      'https://images.pexels.com/photos/1279330/pexels-photo-1279330.jpeg?auto=compress&cs=tinysrgb&w=800',
+      'https://images.pexels.com/photos/1633578/pexels-photo-1633578.jpeg?auto=compress&cs=tinysrgb&w=800',
+      'https://images.pexels.com/photos/1099680/pexels-photo-1099680.jpeg?auto=compress&cs=tinysrgb&w=800',
+      'https://images.pexels.com/photos/1438672/pexels-photo-1438672.jpeg?auto=compress&cs=tinysrgb&w=800'
+    ];
     
-    return `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/recipe-images/${sanitizedTitle}.jpg`;
+    // Use recipe title hash to consistently select the same image for the same recipe
+    const hash = recipeTitle.split('').reduce((a, b) => {
+      a = ((a << 5) - a) + b.charCodeAt(0);
+      return a & a;
+    }, 0);
+    
+    return foodImages[Math.abs(hash) % foodImages.length];
   };
 
   const formatDuration = (minutes?: number) => {
@@ -44,9 +55,6 @@ export const RecipeModal: React.FC<RecipeModalProps> = ({ recipe, onClose }) => 
               src={getRecipeImageUrl(recipe.title)}
               alt={recipe.title}
               className="w-full h-full object-cover"
-              onError={(e) => {
-                e.currentTarget.src = 'https://images.pexels.com/photos/1640777/pexels-photo-1640777.jpeg?auto=compress&cs=tinysrgb&w=800';
-              }}
             />
             <div className="absolute inset-0" style={{ background: 'linear-gradient(to top, #0f2f5f, transparent, transparent)' }} />
           </div>

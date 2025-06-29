@@ -1,5 +1,5 @@
 import React from 'react';
-import { Database, AlertCircle, CheckCircle, Loader } from 'lucide-react';
+import { Database, AlertCircle, CheckCircle, Loader, ExternalLink } from 'lucide-react';
 
 interface DatabaseStatusProps {
   connected: boolean;
@@ -36,19 +36,30 @@ export const DatabaseStatus: React.FC<DatabaseStatusProps> = ({
           {error}
         </p>
         <p className="text-white/60 text-sm mb-6">
-          Please ensure Supabase is connected and configured properly.
+          To connect to Supabase and see recipe data, click the "Connect to Supabase" button in the top right corner.
         </p>
-        {onRetry && (
-          <button
-            onClick={onRetry}
-            className="px-6 py-2 text-white rounded-lg transition-colors"
-            style={{ backgroundColor: '#ddb870' }}
-            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#ebdcb5'}
-            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ddb870'}
+        <div className="flex flex-col sm:flex-row gap-4">
+          {onRetry && (
+            <button
+              onClick={onRetry}
+              className="px-6 py-2 text-white rounded-lg transition-colors"
+              style={{ backgroundColor: '#ddb870' }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#ebdcb5'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ddb870'}
+            >
+              Retry Connection
+            </button>
+          )}
+          <a
+            href="https://supabase.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center space-x-2 px-6 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors"
           >
-            Retry Connection
-          </button>
-        )}
+            <ExternalLink size={16} />
+            <span>Learn about Supabase</span>
+          </a>
+        </div>
       </div>
     );
   }
@@ -65,11 +76,23 @@ export const DatabaseStatus: React.FC<DatabaseStatusProps> = ({
   }
 
   return (
-    <div className="flex items-center justify-center p-8">
-      <div className="flex items-center space-x-3 text-white/60">
+    <div className="flex flex-col items-center justify-center p-8 text-center">
+      <div className="flex items-center space-x-3 text-white/60 mb-4">
         <Database size={24} />
-        <span>Database not connected</span>
+        <span className="text-lg">Database not connected</span>
       </div>
+      <p className="text-white/60 text-sm mb-6 max-w-md">
+        Connect to Supabase to see recipe carousels organized by cuisine type. Click the "Connect to Supabase" button in the top right corner to get started.
+      </p>
+      <a
+        href="https://supabase.com"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex items-center space-x-2 px-6 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors"
+      >
+        <ExternalLink size={16} />
+        <span>Learn about Supabase</span>
+      </a>
     </div>
   );
 };

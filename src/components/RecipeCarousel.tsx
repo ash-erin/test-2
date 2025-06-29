@@ -39,14 +39,23 @@ export const RecipeCarousel: React.FC<RecipeCarouselProps> = ({
   };
 
   const getRecipeImageUrl = (recipeTitle: string) => {
-    // Generate image URL based on recipe title
-    // This assumes images are stored in Supabase storage with naming convention
-    const sanitizedTitle = recipeTitle.toLowerCase()
-      .replace(/[^a-z0-9]/g, '-')
-      .replace(/-+/g, '-')
-      .replace(/^-|-$/g, '');
+    // Use a food-related placeholder image from Pexels
+    const foodImages = [
+      'https://images.pexels.com/photos/1640777/pexels-photo-1640777.jpeg?auto=compress&cs=tinysrgb&w=400',
+      'https://images.pexels.com/photos/376464/pexels-photo-376464.jpeg?auto=compress&cs=tinysrgb&w=400',
+      'https://images.pexels.com/photos/1279330/pexels-photo-1279330.jpeg?auto=compress&cs=tinysrgb&w=400',
+      'https://images.pexels.com/photos/1633578/pexels-photo-1633578.jpeg?auto=compress&cs=tinysrgb&w=400',
+      'https://images.pexels.com/photos/1099680/pexels-photo-1099680.jpeg?auto=compress&cs=tinysrgb&w=400',
+      'https://images.pexels.com/photos/1438672/pexels-photo-1438672.jpeg?auto=compress&cs=tinysrgb&w=400'
+    ];
     
-    return `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/recipe-images/${sanitizedTitle}.jpg`;
+    // Use recipe title hash to consistently select the same image for the same recipe
+    const hash = recipeTitle.split('').reduce((a, b) => {
+      a = ((a << 5) - a) + b.charCodeAt(0);
+      return a & a;
+    }, 0);
+    
+    return foodImages[Math.abs(hash) % foodImages.length];
   };
 
   const formatDuration = (minutes?: number) => {
@@ -116,10 +125,6 @@ export const RecipeCarousel: React.FC<RecipeCarouselProps> = ({
                     src={getRecipeImageUrl(recipe.title)}
                     alt={recipe.title}
                     className="w-full h-36 md:h-48 object-cover"
-                    onError={(e) => {
-                      // Fallback to a placeholder image if recipe image fails to load
-                      e.currentTarget.src = 'https://images.pexels.com/photos/1640777/pexels-photo-1640777.jpeg?auto=compress&cs=tinysrgb&w=400';
-                    }}
                   />
                   
                   <div className={`absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent transition-opacity duration-300 ${
